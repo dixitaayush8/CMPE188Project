@@ -60,7 +60,7 @@ def main():
    spearmanr_coefficient, p_value = spearmanr(health, absences)
 
    #since this would output -0.070, there is almost no correlation between the two features which is important for our purpose
-   print(“Spearmanr Rank correlation coefficient beween health and absences %0.3f” % (spearmanr_coefficient))
+   print("Spearmanr Rank correlation coefficient beween health and absences %0.3f" % (spearmanr_coefficient))
 
    sb.regplot(x='health', y='absences', data = data, scatter = True)
 
