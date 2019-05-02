@@ -21,16 +21,20 @@ def f(row):
 
 def main():
     data = pd.read_csv('student-por.csv')
-    print(data.head())
     data.dropna(inplace=True)
 
+    data['sex'] = data['sex'].map({'F': 0, 'M': 1})
+    data['higher'] = data['higher'].map({'no': 0, 'yes': 1})
 
-    df = data.iloc[:, [2, 13, 14, 24, 25, 26, 27, 28, 29, 30, 31, 32]]
+    df = data.iloc[:, [1, 2, 14, 20, 24, 25, 26, 27, 28, 29, 30, 31, 32]]
 
-    df['average'] = df.iloc[:, 9:12].astype(float).mean(axis=1)
-    df['pass/fail'] = df.apply(f,axis=1)
+    print(df.head(5))
 
-    print(df.head())
+    df['average'] = df.iloc[:, -3:-1].astype(float).mean(axis=1)
+    df['pass/fail'] = df.apply(f, axis=1)
+
+    df.drop(['G1', 'G2', 'G3'], inplace=True, axis=1)
+    print(df.head(100))
 
     print(len(df.columns))
     trainData, testData = train_test_split(df, test_size=0.3, random_state=1)
@@ -38,34 +42,30 @@ def main():
     passing = trainData[trainData.iloc[:, -1] == 1]
     failing = trainData[trainData.iloc[:, -1] == 0]
 
-    print(failing.count())
-
-    passingUpsample = resample(passing, replace=True, n_samples=310, random_state=1)
-
+    passingUpsample = resample(passing, replace=True, n_samples=320, random_state=1)
     trainUpsample = pd.concat([passingUpsample, failing])
 
-    X_train = trainUpsample.iloc[:, 0:8].values
+    X_train = trainUpsample.iloc[:, 0:10].values
     y_train = trainUpsample.iloc[:, -1].values
 
-
-    X_test = testData.iloc[:, 0:8].values
+    X_test = testData.iloc[:, 0:10].values
     y_test = testData.iloc[:, -1].values
 
-    nb = GaussianNB().fit(X_train, y_train)
-    prediction = list(nb.predict(X_test))
-    accuracy = round(nb.score(X_test, y_test) * 100, 2)
-    print('Python Accuracy for Naive Bayes: {}%'.format(accuracy))
+    # nb = GaussianNB().fit(X_train, y_train)
+    # prediction = list(nb.predict(X_test))
+    # accuracy = round(nb.score(X_test, y_test) * 100, 2)
+    # print('Python Accuracy for Naive Bayes: {}%'.format(accuracy))
 
     svm = SVC(kernel='linear').fit(X_train,y_train)
     prediction = list(svm.predict(X_test))
     accuracy = round(svm.score(X_test,y_test) * 100, 2)
     print('Python SVM Accuracy: {}%'.format(accuracy))
 
-    neighbors = KNeighborsClassifier(n_neighbors=3).fit(X_train, y_train)
-    accuracy = round(neighbors.score(X_test, y_test) * 100, 2)
-    print('Python KNN Accuracy: {}%'.format(accuracy))
+    # neighbors = KNeighborsClassifier(n_neighbors=3).fit(X_train, y_train)
+    # accuracy = round(neighbors.score(X_test, y_test) * 100, 2)
+    # print('Python KNN Accuracy: {}%'.format(accuracy))
 
-    logit = LogisticRegression(random_state=0, solver='lbfgs').fit(X_train, y_train)
+    logit = LogisticRegression(random_state=0, solver='liblinear').fit(X_train, y_train)
     accuracy = round(logit.score(X_test, y_test) * 100, 2)
     print('Python Logistic Regression Accuracy: {}%'.format(accuracy))
 
