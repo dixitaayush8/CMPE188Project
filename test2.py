@@ -22,10 +22,10 @@ from sklearn.preprocessing import scale
 from sklearn import metrics
 from sklearn import preprocessing
 
-def average(score1, score2, score3):
+def average(score1, score2, score3): 
    return (score1 + score2 + score3) / 3
 
-def f(row):
+def f(row): #helper function that factorizes "pass/fail" column to 1/0 based on threshold of average out of 20. Threshold defined at 0.64.
    if row['average']/20 > 0.64:
        val = 1
    elif row['average']/20 <= 0.64:
@@ -33,93 +33,88 @@ def f(row):
    return val
 
 
-def convertPstatus(row):
+def convertPstatus(row): #if parent's status is apart, set value to 0. Else, if they're together, set value to 1. 
    if row['Pstatus'] == 'A':
       val = 0
    elif row['Pstatus'] == 'T':
       val = 1
    return val
 
-def main():
-   data = pd.read_csv('student-por.csv')
-   data.dropna(inplace=True)
+def main(): #main function to run machine learning computations and 
+   data = pd.read_csv('student-por.csv') #read data from students who took a Portuguese class
+   data.dropna(inplace=True) #drop any unnecessary NA values in the data
 
-   df = data.iloc[:, [1, 2, 5, 6, 7, 13, 14, 20, 23, 24, 26, 27, 28, 29, 30, 31, 32]]
+   df = data.iloc[:, [1, 2, 5, 6, 7, 13, 14, 20, 23, 24, 26, 27, 28, 29, 30, 31, 32]] #get sex, age, studytime, failures, higher, famrel, freetime, health, absences, ParentEdu, Talc, g1, g2, g3, Dalc, Walc, Pstatus, Medu, Fedu columns from dataset
 
-   df['sex'] = data['sex'].map({'F': 0, 'M': 1})
-   df['higher'] = data['higher'].map({'no': 0, 'yes': 1})
+   df['sex'] = data['sex'].map({'F': 0, 'M': 1}) #replace M/F in "sex" column to binary for data preprocessing
+   df['higher'] = data['higher'].map({'no': 0, 'yes': 1}) #converts "yes/no" response to binary, higher represents whether user wants higher education or not
 
-   df['average'] = df.iloc[:, -3:-1].astype(float).mean(axis=1)
-   df['ParentEdu'] = df.iloc[:, 4:6].astype(float).sum(axis=1)
-   df['Talc'] = df.iloc[:, 7:9].astype(float).sum(axis=1)
-   df['PstatusNum'] = df.apply(convertPstatus, axis=1)
-   df['pass/fail'] = df.apply(f, axis=1)
+   df['average'] = df.iloc[:, -3:-1].astype(float).mean(axis=1) #create a new column in dataframe called "average". Averages G1, G2, and G3 columns. 
+   df['ParentEdu'] = df.iloc[:, 4:6].astype(float).sum(axis=1) #sums up Medu + Fedu (mother and father education levels)
+   df['Talc'] = df.iloc[:, 7:9].astype(float).sum(axis=1) #sums up Dalc and Walc
+   df['PstatusNum'] = df.apply(convertPstatus, axis=1) #converts A/T to 0/1
+   df['pass/fail'] = df.apply(f, axis=1) #applies "f" function to pass/fail column
 
-   df.drop(['G1', 'G2', 'G3', 'Medu', 'Fedu', 'average', 'Dalc', 'Walc', 'Pstatus'], inplace=True, axis=1)
+   df.drop(['G1', 'G2', 'G3', 'Medu', 'Fedu', 'average', 'Dalc', 'Walc', 'Pstatus'], inplace=True, axis=1) #drop unnecessary columns after computation
 
-   print(df.head())
+   print(df.head()) #double checking the output so far
 
    print(len(df.columns))
-   trainData, testData = train_test_split(df, test_size=0.3, random_state=1)
+   trainData, testData = train_test_split(df, test_size=0.3, random_state=1) #split data into training data and testing data
 
-   passing = trainData[trainData.iloc[:, -1] == 1]
-   failing = trainData[trainData.iloc[:, -1] == 0]
+   passing = trainData[trainData.iloc[:, -1] == 1] #number of passing grade values
+   failing = trainData[trainData.iloc[:, -1] == 0] #number of failing grade values
 
-   print(failing.count())
+   print(failing.count()) 
 
-   passingUpsample = resample(passing, replace=True, n_samples=310, random_state=1)
+   passingUpsample = resample(passing, replace=True, n_samples=310, random_state=1) #upsample data to number of passing matches number of failing
 
    trainUpsample = pd.concat([passingUpsample, failing])
 
    print("Training Data..........................................")
    print(trainUpsample.iloc[:, 0:11])
 
-   X_train = trainUpsample.iloc[:, 0:11].values
-   y_train = trainUpsample.iloc[:, -1].values
+   X_train = trainUpsample.iloc[:, 0:11].values #take the first 11 columns
+   y_train = trainUpsample.iloc[:, -1].values #take pass/fail column
 
-   X_test = testData.iloc[:, 0:11].values
+   X_test = testData.iloc[:, 0:11].values #take first 11 columns
    y_test = testData.iloc[:, -1].values
 
-   nb = GaussianNB().fit(X_train, y_train)
+   #nb = GaussianNB().fit(X_train, y_train)
 
    #----------------
    #checking for independence amongst features
-   student_data = data.ix[:, (13,14)].values
-   student_data_names = ['health', 'absences']
-
-   #failure column
-   y = data.ix[:,14].values
-
    health = data['health']
    absences = data['absences']
    spearmanr_coefficient, p_value = spearmanr(health, absences)
 
    #since this would output -0.070, there is almost no correlation between the two features which is important for our purpose
-   print("Spearmanr Rank correlation coefficient beween health and absences %0.3f" % (spearmanr_coefficient))
+   print("Spearman Rank correlation coefficient beween health and absences %0.3f" % (spearmanr_coefficient))
 
    sb.regplot(x='health', y='absences', data = data, scatter = True)
 
    # ----------------
 
 
-   svm = SVC(kernel='linear').fit(X_train,y_train)
+   svm = SVC(kernel='linear').fit(X_train,y_train) #input model into SVM algorithm
    prediction = list(svm.predict(X_test))
    print(prediction)
    accuracy = round(svm.score(X_test,y_test) * 100, 2)
    print('Python SVM Accuracy: {}%'.format(accuracy))
 
-   neighbors = KNeighborsClassifier(n_neighbors=3).fit(X_train, y_train)
+   neighbors = KNeighborsClassifier(n_neighbors=3).fit(X_train, y_train) #input model into KNN algorithm
    accuracy = round(neighbors.score(X_test, y_test) * 100, 2)
    print('Python KNN Accuracy: {}%'.format(accuracy))
 
-   accuracy = round(nb.score(X_test, y_test) * 100, 2)
-   print('Python Accuracy for Naive Bayes: {}%'.format(accuracy))
+   #accuracy = round(nb.score(X_test, y_test) * 100, 2)
+   #print('Python Accuracy for Naive Bayes: {}%'.format(accuracy))
 
-   logit = LogisticRegression(random_state=0, solver='lbfgs').fit(X_train, y_train)
+   logit = LogisticRegression(random_state=0, solver='lbfgs').fit(X_train, y_train) #input model into Logistic Regression
    accuracy = round(logit.score(X_test, y_test) * 100, 2)
    print('Python Logistic Regression Accuracy: {}%'.format(accuracy))
    plt.show()
 
+   #take data from user 
    gender = str(input('Are you a male or female? (M or F)'))
    gender = 0 if gender=="F" else 1
    age = str(input('What is your age?'))
@@ -150,9 +145,11 @@ def main():
    health = int(health)
    absences = str(input('How many absences have you had during the school year so far? (93 is the max)'))
    absences = int(absences)
+   #create one row of dataframe from user's inputs
    df_two = pd.DataFrame(columns=['sex', 'age', 'studytime','failures','higher','famrel','freetime','health','absences','ParentEdu','Talc'])
    print(df_two)
    df_two.loc[0] = pd.Series({'sex': gender, 'age': age,'studytime': studytime,'failures': failures,'higher': higher,'famrel': famrel,'freetime': free_time,'health': health,'absences': absences,'ParentEdu': ParentEdu,'Talc': talc})
-   prediction = list(logit.predict(df_two.iloc[:, 0:11]))
-   print(prediction)
+   prediction = list(logit.predict(df_two.iloc[:, 0:11])) #use Logistic regression to predict user's chances of passing or failing based on alcoholic + behavioral habits
+   print(prediction) #print prediction as list containing one of either 0 or 1
+
 main()
