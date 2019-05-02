@@ -14,9 +14,9 @@ import numpy as np
 from pandas import Series, DataFrame
 import scipy
 from scipy.stats import spearmanr
+import seaborn as sb
 
 from pylab import rcParams
-import seaborn as sb
 import sklearn
 from sklearn.preprocessing import scale
 from sklearn import metrics
@@ -32,20 +32,52 @@ def f(row):
        val = 0
    return val
 
+
+def convertPstatus(row):
+   if row['Pstatus'] == 'A':
+      val = 0
+   elif row['Pstatus'] == 'T':
+      val = 1
+   return val
+
 def main():
    data = pd.read_csv('student-por.csv')
    data.dropna(inplace=True)
 
-   df = data.iloc[:, [13, 14, 24, 25, 26, 27, 28, 29, 30, 31, 32]]
-   print(df.head())
-   df['average'] = df.iloc[:, 8:11].astype(float).mean(axis=1)
-   df['pass/fail'] = df.apply(f,axis=1)
+   df = data.iloc[:, [5, 6, 7, 13, 14, 23, 24, 26, 27, 28, 29, 30, 31, 32]]
+
+   df['average'] = df.iloc[:, -3:-1].astype(float).mean(axis=1)
+   df['ParentEdu'] = df.iloc[:, 2:4].astype(float).sum(axis=1)
+   df['Talc'] = df.iloc[:, 5:7].astype(float).sum(axis=1)
+   df['PstatusNum'] = df.apply(convertPstatus, axis=1)
+   df['pass/fail'] = df.apply(f, axis=1)
+
+   df.drop(['G1', 'G2', 'G3', 'Medu', 'Fedu', 'average', 'Dalc', 'Walc', 'Pstatus'], inplace=True, axis=1)
 
    print(df.head())
+
    print(len(df.columns))
    trainData, testData = train_test_split(df, test_size=0.3, random_state=1)
-   X_train = trainData.iloc[:, 0:7]
-   y_train = trainData.iloc[:, 12]
+
+   passing = trainData[trainData.iloc[:, -1] == 1]
+   failing = trainData[trainData.iloc[:, -1] == 0]
+
+   print(failing.count())
+
+   passingUpsample = resample(passing, replace=True, n_samples=310, random_state=1)
+
+   trainUpsample = pd.concat([passingUpsample, failing])
+
+   print("Training Data..........................................")
+   print(trainUpsample.iloc[:, 0:9])
+
+   X_train = trainUpsample.iloc[:, 0:9].values
+   y_train = trainUpsample.iloc[:, -1].values
+
+   X_test = testData.iloc[:, 0:9].values
+   y_test = testData.iloc[:, -1].values
+
+   nb = GaussianNB().fit(X_train, y_train)
 
    #----------------
    #checking for independence amongst features
@@ -65,15 +97,9 @@ def main():
    sb.regplot(x='health', y='absences', data = data, scatter = True)
 
    # ----------------
-   nb = GaussianNB().fit(X_train, y_train)
-   X_test = testData.iloc[:, 0:7]
-   y_test = testData.iloc[:, 12]
-   prediction = list(nb.predict(X_test))
-   print(prediction)
+
 
    svm = SVC(kernel='linear').fit(X_train,y_train)
-   X_test = testData.iloc[:, 0:7]
-   y_test = testData.iloc[:, 12]
    prediction = list(svm.predict(X_test))
    print(prediction)
    accuracy = round(svm.score(X_test,y_test) * 100, 2)
