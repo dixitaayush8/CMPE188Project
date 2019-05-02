@@ -44,11 +44,14 @@ def main():
    data = pd.read_csv('student-por.csv')
    data.dropna(inplace=True)
 
-   df = data.iloc[:, [5, 6, 7, 13, 14, 23, 24, 26, 27, 28, 29, 30, 31, 32]]
+   df = data.iloc[:, [1, 2, 5, 6, 7, 13, 14, 20, 23, 24, 26, 27, 28, 29, 30, 31, 32]]
+
+   df['sex'] = data['sex'].map({'F': 0, 'M': 1})
+   df['higher'] = data['higher'].map({'no': 0, 'yes': 1})
 
    df['average'] = df.iloc[:, -3:-1].astype(float).mean(axis=1)
-   df['ParentEdu'] = df.iloc[:, 2:4].astype(float).sum(axis=1)
-   df['Talc'] = df.iloc[:, 5:7].astype(float).sum(axis=1)
+   df['ParentEdu'] = df.iloc[:, 4:6].astype(float).sum(axis=1)
+   df['Talc'] = df.iloc[:, 7:9].astype(float).sum(axis=1)
    df['PstatusNum'] = df.apply(convertPstatus, axis=1)
    df['pass/fail'] = df.apply(f, axis=1)
 
@@ -69,12 +72,12 @@ def main():
    trainUpsample = pd.concat([passingUpsample, failing])
 
    print("Training Data..........................................")
-   print(trainUpsample.iloc[:, 0:9])
+   print(trainUpsample.iloc[:, 0:11])
 
-   X_train = trainUpsample.iloc[:, 0:9].values
+   X_train = trainUpsample.iloc[:, 0:11].values
    y_train = trainUpsample.iloc[:, -1].values
 
-   X_test = testData.iloc[:, 0:9].values
+   X_test = testData.iloc[:, 0:11].values
    y_test = testData.iloc[:, -1].values
 
    nb = GaussianNB().fit(X_train, y_train)
