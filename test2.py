@@ -1,5 +1,7 @@
 import pandas as pd
 import math
+import matplotlib.pyplot as plt
+
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import GaussianNB
 from sklearn.linear_model import LogisticRegression
@@ -7,66 +9,85 @@ from sklearn.utils import resample
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 
+#
+import numpy as np
+from pandas import Series, DataFrame
+import scipy
+from scipy.stats import spearmanr
+
+from pylab import rcParams
+import seaborn as sb
+import sklearn
+from sklearn.preprocessing import scale
+from sklearn import metrics
+from sklearn import preprocessing
 
 def average(score1, score2, score3):
-    return (score1 + score2 + score3) / 3
+   return (score1 + score2 + score3) / 3
 
 def f(row):
-    if row['average']/20 > 0.64:
-        val = 1
-    elif row['average']/20 <= 0.64:
-        val = 0
-    return val
-
+   if row['average']/20 > 0.64:
+       val = 1
+   elif row['average']/20 <= 0.64:
+       val = 0
+   return val
 
 def main():
-    data = pd.read_csv('student-por.csv')
-    data.dropna(inplace=True)
+   data = pd.read_csv('student-por.csv')
+   data.dropna(inplace=True)
 
-    data['sex'] = data['sex'].map({'F': 0, 'M': 1})
-    data['higher'] = data['higher'].map({'no': 0, 'yes': 1})
+   df = data.iloc[:, [13, 14, 24, 25, 26, 27, 28, 29, 30, 31, 32]]
+   print(df.head())
+   df['average'] = df.iloc[:, 8:11].astype(float).mean(axis=1)
+   df['pass/fail'] = df.apply(f,axis=1)
 
-    df = data.iloc[:, [1, 2, 14, 20, 24, 25, 26, 27, 28, 29, 30, 31, 32]]
+   print(df.head())
+   print(len(df.columns))
+   trainData, testData = train_test_split(df, test_size=0.3, random_state=1)
+   X_train = trainData.iloc[:, 0:7]
+   y_train = trainData.iloc[:, 12]
 
-    print(df.head(5))
+   #----------------
+   #checking for independence amongst features
+   student_data = data.ix[:, (13,14)].values
+   student_data_names = ['health', 'absences']
 
-    df['average'] = df.iloc[:, -3:-1].astype(float).mean(axis=1)
-    df['pass/fail'] = df.apply(f, axis=1)
+   #failure column
+   y = data.ix[:,14].values
 
-    df.drop(['G1', 'G2', 'G3'], inplace=True, axis=1)
-    print(df.head(100))
+   health = data['health']
+   absences = data['absences']
+   spearmanr_coefficient, p_value = spearmanr(health, absences)
 
-    print(len(df.columns))
-    trainData, testData = train_test_split(df, test_size=0.3, random_state=1)
+   #since this would output -0.070, there is almost no correlation between the two features which is important for our purpose
+   print(“Spearmanr Rank correlation coefficient beween health and absences %0.3f” % (spearmanr_coefficient))
 
-    passing = trainData[trainData.iloc[:, -1] == 1]
-    failing = trainData[trainData.iloc[:, -1] == 0]
+   sb.regplot(x='health', y='absences', data = data, scatter = True)
 
-    passingUpsample = resample(passing, replace=True, n_samples=320, random_state=1)
-    trainUpsample = pd.concat([passingUpsample, failing])
+   # ----------------
+   nb = GaussianNB().fit(X_train, y_train)
+   X_test = testData.iloc[:, 0:7]
+   y_test = testData.iloc[:, 12]
+   prediction = list(nb.predict(X_test))
+   print(prediction)
 
-    X_train = trainUpsample.iloc[:, 0:10].values
-    y_train = trainUpsample.iloc[:, -1].values
+   svm = SVC(kernel='linear').fit(X_train,y_train)
+   X_test = testData.iloc[:, 0:7]
+   y_test = testData.iloc[:, 12]
+   prediction = list(svm.predict(X_test))
+   print(prediction)
+   accuracy = round(svm.score(X_test,y_test) * 100, 2)
+   print('Python SVM Accuracy: {}%'.format(accuracy))
 
-    X_test = testData.iloc[:, 0:10].values
-    y_test = testData.iloc[:, -1].values
+   neighbors = KNeighborsClassifier(n_neighbors=3).fit(X_train, y_train)
+   accuracy = round(neighbors.score(X_test, y_test) * 100, 2)
+   print('Python KNN Accuracy: {}%'.format(accuracy))
 
-    # nb = GaussianNB().fit(X_train, y_train)
-    # prediction = list(nb.predict(X_test))
-    # accuracy = round(nb.score(X_test, y_test) * 100, 2)
-    # print('Python Accuracy for Naive Bayes: {}%'.format(accuracy))
+   accuracy = round(nb.score(X_test, y_test) * 100, 2)
+   print('Python Accuracy for Naive Bayes: {}%'.format(accuracy))
 
-    svm = SVC(kernel='linear').fit(X_train,y_train)
-    prediction = list(svm.predict(X_test))
-    accuracy = round(svm.score(X_test,y_test) * 100, 2)
-    print('Python SVM Accuracy: {}%'.format(accuracy))
-
-    # neighbors = KNeighborsClassifier(n_neighbors=3).fit(X_train, y_train)
-    # accuracy = round(neighbors.score(X_test, y_test) * 100, 2)
-    # print('Python KNN Accuracy: {}%'.format(accuracy))
-
-    logit = LogisticRegression(random_state=0, solver='liblinear').fit(X_train, y_train)
-    accuracy = round(logit.score(X_test, y_test) * 100, 2)
-    print('Python Logistic Regression Accuracy: {}%'.format(accuracy))
-
+   logit = LogisticRegression(random_state=0, solver='lbfgs').fit(X_train, y_train)
+   accuracy = round(logit.score(X_test, y_test) * 100, 2)
+   print('Python Logistic Regression Accuracy: {}%'.format(accuracy))
+   print(plt.show())
 main()
